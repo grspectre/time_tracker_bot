@@ -13,4 +13,10 @@ git clone https://github.com/grspectre/time_tracker_bot.git
 cd ./time_tracker_bot/
 python -m venv --clear venv
 ./venv/bin/pip install -r ./requirements.txt
+exit
+cp /home/[USER_DIR]/time_tracker_bot/bot.service /etc/systemd/system/
+chown root:root /etc/systemd/system/bot.service
+chmod 644 /etc/systemd/system/bot.service
+systemctl enable bot
+
 ```

@@ -1,11 +1,11 @@
 import psycopg2
 from util import config
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, List
 from loguru import logger
 import telegram
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date, time
 
 
 TIMESTAMP_WITH_TZ = '%Y-%m-%d %H:%M:%S %z'
@@ -157,6 +157,35 @@ class Message:
         finally:
             cursor.close()
             conn.close()
+
+    @classmethod
+    def get_log(cls, user: User, offset: int) -> List:
+        tzinfo = timezone(timedelta(hours=user.get_utc_offset()))
+        offset = abs(offset)
+        d = cls.get_date_by_offset(offset)
+        date1 = datetime.combine(d, time(0, 0), tzinfo=tzinfo)
+        date2 = datetime.combine(d, time(23, 59, 59), tzinfo=tzinfo)
+        sql = """SELECT event_time, description 
+        FROM {}
+        WHERE tt_user_id = %s AND event_time BETWEEN %s AND %s
+        ORDER BY event_time""".format(cls.table_name)
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (user.id, date1, date2))
+            result = cursor.fetchall()
+        except (Exception, psycopg2.Error) as error:
+            logger.error('PQ error: {}'.format(error))
+        finally:
+            cursor.close()
+            conn.close()
+        if result is None:
+            return []
+        return result
+    
+    @staticmethod
+    def get_date_by_offset(offset: int) -> date:
+        return date.today() - timedelta(days = offset)
 
 
 def get_connection():

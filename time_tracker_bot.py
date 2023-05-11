@@ -5,6 +5,7 @@ from loguru import logger
 from model import get_user, get_message, Message
 import os
 from datetime import datetime, timezone, timedelta
+from tempfile import TemporaryFile
 
 
 async def set_utc_offset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -35,6 +36,50 @@ async def set_utc_offset_command(update: Update, context: ContextTypes.DEFAULT_T
     db_user = get_user(from_user)
     db_user.set_utc_offset(offset)
     await update.message.reply_text('UTC offset changed to {:d}'.format(offset))
+
+
+async def log_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    def format_date(dt: datetime, offset: int) -> str:
+        str_format = '%Y-%m-%d %H:%M:%S'
+        tzinfo = timezone(timedelta(hours=offset))
+        return dt.astimezone(tzinfo).strftime(str_format)
+
+    text = update.message.text.split()
+    help_text = 'Use /log [INTEGER_OFFSET <= 0], default value is 0, for example /log -3 or /log.'
+
+    error = None
+    try:
+        offset = text[1]
+    except IndexError:
+        offset = 0
+
+    try:
+        offset = int(offset)
+    except ValueError:
+        error = 'Offset must be negative integer'
+
+    if error is None:
+        if offset > 0:
+            offset = 0
+
+    if error is not None:
+        await update.message.reply_text('{} {}'.format(error, help_text))
+        return
+
+    from_user = update.effective_user
+    db_user = get_user(from_user)
+
+    d = Message.get_date_by_offset(offset)
+    caption = 'Лог за {}'.format(d.strftime('%d.%m.%Y'))
+    dt = datetime.now()
+    file_name = 'log_{}.txt'.format(dt.strftime('%Y%m%d_%H%M%S'))
+
+    messages = Message.get_log(db_user, offset=offset)
+    messages = ['{:s} {:s}'.format(format_date(i[0], db_user.get_utc_offset()), i[1]) for i in messages]
+    with TemporaryFile(encoding='utf8', mode='w+') as fp:
+        fp.write('\n'.join(messages))
+        fp.seek(0)
+        await update.message.reply_document(fp, caption=caption, filename=file_name)
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -100,6 +145,7 @@ def bot_init(token: str) -> None:
 
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("set_utc_offset", set_utc_offset_command))
+    app.add_handler(CommandHandler("log", log_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, track_save))
 
     app.run_polling()

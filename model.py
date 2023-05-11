@@ -43,7 +43,6 @@ class User:
             cursor.close()
             conn.close()
 
-
     def load_from_db(self, user_id: int) -> None:
         sql = "SELECT * FROM {} WHERE user_id = %s".format(self.table_name)
         try:
@@ -59,6 +58,32 @@ class User:
         if result is None:
             return
         self.id, self.user_id, self.data = result
+        self.found = True
+
+    def from_data(self, key: str, default_value: Any = None) -> Any:
+        if key in self.data:
+            return self.data[key]
+        return default_value
+
+    def save(self) -> None:
+        sql = "UPDATE {} SET data = %s WHERE id = %s".format(self.table_name)
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(sql, (json.dumps(self.data), self.id))
+            conn.commit()
+        except (Exception, psycopg2.Error) as error:
+            logger.error('PQ error: {}'.format(error))
+        finally:
+            cursor.close()
+            conn.close()
+
+    def set_utc_offset(self, offset: int) -> None:
+        self.data['utc_offset'] = offset
+        self.save()
+
+    def get_utc_offset(self) -> int:
+        return self.from_data('utc_offset', 0)
 
 
 @dataclass
@@ -115,10 +140,10 @@ class Message:
         self.id, self.tt_user_id, self.description, self.data, self.event_time, self.message_id = result
         self.found = True
 
-    def from_data(self, key: str) -> Any:
+    def from_data(self, key: str, default_value: Any = None) -> Any:
         if key in self.data:
             return self.data[key]
-        return None
+        return default_value
 
     def save(self) -> None:
         sql = "UPDATE {} SET description = %s, data = %s WHERE id = %s".format(self.table_name)

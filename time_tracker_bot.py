@@ -6,10 +6,39 @@ from model import get_user, get_message, Message
 from datetime import datetime, timezone, timedelta
 
 
+async def set_utc_offset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.message.text.split()
+    help_text = 'Use /set_utc_offset [INTEGER_OFFSET(-24..24)], for example /set_utc_offset -3.'
+
+    error = None
+    try:
+        offset = text[1]
+    except IndexError:
+        error = 'Offset not defined.'
+
+    if error is None:
+        try:
+            offset = int(offset)
+        except ValueError:
+            error = 'Offset must be integer'
+
+    if error is None:
+        if offset < -24 or offset > 24:
+            error = 'Offset must be in interval -24..24.'
+
+    if error is not None:
+        await update.message.reply_text('{} {}'.format(error, help_text))
+        return
+
+    from_user = update.effective_user
+    db_user = get_user(from_user)
+    db_user.set_utc_offset(offset)
+    await update.message.reply_text('UTC offset changed to {:d}'.format(offset))
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from_user = update.effective_user
     logger.info(from_user)
-    db_user = get_user(from_user)
     await update.message.reply_text("Hello, it is a time tracker bot. Just type something with tag #, for example #wake_up or time tracker #mini_project. For additional help use /help")
 
 
@@ -69,7 +98,7 @@ def bot_init(token: str) -> None:
     app = ApplicationBuilder().token(token).build()
 
     app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("hello", hello))
+    app.add_handler(CommandHandler("set_utc_offset", set_utc_offset_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, track_save))
 
     app.run_polling()

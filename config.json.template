@@ -1,0 +1,7 @@
+{
+    "token": "[telegram token here]",
+    "db_user": "time_tracker",
+    "db_name": "time_tracker",
+    "db_password": "time_tracker",
+    "db_port": 5432
+}

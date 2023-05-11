@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 from loguru import logger
 from model import get_user, get_message, Message
+import os
 from datetime import datetime, timezone, timedelta
 
 
@@ -104,9 +105,14 @@ def bot_init(token: str) -> None:
     app.run_polling()
 
 
+def get_log_path() -> None:
+    path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(path, 'logs', 'info_{time:YYYY-MM-DD}.log')
+
+
 @logger.catch
 def main() -> None:
-    logger.add('logs/info_{time:YYYY-MM-DD}.log', level="INFO")
+    logger.add(get_log_path(), level="INFO")
     token = config('token')
     bot_init(token)
 

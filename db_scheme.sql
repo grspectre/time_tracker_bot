@@ -1,3 +1,33 @@
+-- SEQUENCE: public.tt_data_id_seq
+
+-- DROP SEQUENCE IF EXISTS public.tt_data_id_seq;
+
+CREATE SEQUENCE IF NOT EXISTS public.tt_data_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1
+;
+
+ALTER SEQUENCE public.tt_data_id_seq
+    OWNER TO time_tracker;
+
+-- SEQUENCE: public.tt_user_id_seq
+
+-- DROP SEQUENCE IF EXISTS public.tt_user_id_seq;
+
+CREATE SEQUENCE IF NOT EXISTS public.tt_user_id_seq
+    INCREMENT 1
+    START 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    CACHE 1
+;
+
+ALTER SEQUENCE public.tt_user_id_seq
+    OWNER TO time_tracker;
+    
 -- Table: public.tt_user
 
 -- DROP TABLE IF EXISTS public.tt_user;

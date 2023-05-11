@@ -82,6 +82,37 @@ async def log_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await update.message.reply_document(fp, caption=caption, filename=file_name)
 
 
+async def stat_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.message.text.split()
+    help_text = 'Use /stat [INTEGER_OFFSET <= 0], default value is 0, for example /stat -3 or /log.'
+
+    error = None
+    try:
+        offset = text[1]
+    except IndexError:
+        offset = 0
+
+    try:
+        offset = int(offset)
+    except ValueError:
+        error = 'Offset must be negative integer or 0.'
+
+    if error is None:
+        if offset > 0:
+            offset = 0
+
+    if error is not None:
+        await update.message.reply_text('{} {}'.format(error, help_text))
+        return
+
+    from_user = update.effective_user
+    db_user = get_user(from_user)
+
+    message = Message.get_stat(db_user, offset)
+    import telegram
+    await update.message.reply_text("```\n{}\n```".format(message), parse_mode='Markdown')
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     from_user = update.effective_user
     logger.info(from_user)
@@ -146,6 +177,7 @@ def bot_init(token: str) -> None:
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("set_utc_offset", set_utc_offset_command))
     app.add_handler(CommandHandler("log", log_command))
+    app.add_handler(CommandHandler("stat", stat_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, track_save))
 
     app.run_polling()

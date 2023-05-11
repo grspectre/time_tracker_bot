@@ -1,11 +1,12 @@
 import psycopg2
 from util import config
 from dataclasses import dataclass
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 from loguru import logger
 import telegram
 import json
 from datetime import datetime, timezone, timedelta, date, time
+from util import get_tags
 
 
 TIMESTAMP_WITH_TZ = '%Y-%m-%d %H:%M:%S %z'
@@ -96,6 +97,7 @@ class Message:
     message_id: int
     found: bool = False
     table_name: str = 'tt_data'
+    summary_tag: str = '#итого'
 
     def __init__(self, user_id: int,  message_id: int) -> None:
         self.load_from_db(user_id, message_id)
@@ -157,6 +159,68 @@ class Message:
         finally:
             cursor.close()
             conn.close()
+
+    @classmethod
+    def get_stat(cls, user: User, offset: int) -> List:
+        rows = cls.get_log(user, offset)
+        last_date = None
+        output = {
+            cls.summary_tag: {
+                'seconds': 0,
+                'text': []
+            }
+        }
+        for dt, text_item in rows:
+            if last_date is None:
+                last_date = dt
+                continue
+            minus = dt - last_date
+
+            text, tags = get_tags(text_item)
+
+            for tag in tags:
+                if tag not in output:
+                    output[tag] = {
+                        'seconds': 0,
+                        'texts': [],
+                        'texts_seconds': {}
+                    }
+                if text not in output[tag]['texts']:
+                    output[tag]['texts'].append(text)
+                if text not in output[tag]['texts_seconds']:
+                    output[tag]['texts_seconds'][text] = 0
+                output[tag]['seconds'] += minus.total_seconds()
+                output[tag]['texts_seconds'][text] += minus.total_seconds()
+                output[cls.summary_tag]['seconds'] += minus.total_seconds()
+            last_date = dt
+        return cls.pretty_print(output)
+    
+    @classmethod
+    def pretty_print(cls, data: Dict) -> str:
+        data = {k: v for k, v in sorted(data.items(), key=lambda item: item[1]['seconds'])}
+
+        keys = data.keys()
+        max_len = len(max(keys, key=len))
+
+        rows = []
+        for tag in data:
+            if tag == cls.summary_tag:
+                continue
+            time_delta = str(timedelta(seconds=data[tag]['seconds']))
+            texts = data[tag]['texts']
+
+            texts_formatted = []
+            for text in texts:
+                secs = data[tag]['texts_seconds'][text]
+                text_time_delta = str(timedelta(seconds=secs))
+                texts_formatted.append('{} ({})'.format(text, text_time_delta))
+
+            rows.append('{}: {} {}'.format(' '*(max_len-len(tag)) + tag, time_delta, ', '.join(texts_formatted)))
+
+        rows.append('')
+        time_delta = str(timedelta(seconds=data[cls.summary_tag]['seconds']))
+        rows.append('{}: {} {}'.format(' '*(max_len-len(cls.summary_tag)) + cls.summary_tag, time_delta, ''))
+        return '\n'.join(rows)
 
     @classmethod
     def get_log(cls, user: User, offset: int) -> List:

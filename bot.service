@@ -1,0 +1,12 @@
+[Unit]
+Description=Simple time tracker bot service
+
+[Service]
+WorkingDirectory=/home/tracker/time_tracker_bot/
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/tracker/time_tracker_bot/venv/bin/python3 /home/tracker/time_tracker_bot/time_tracker_bot.py
+
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

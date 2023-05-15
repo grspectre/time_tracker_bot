@@ -225,7 +225,6 @@ class Message:
     @classmethod
     def get_log(cls, user: User, offset: int) -> List:
         tzinfo = timezone(timedelta(hours=user.get_utc_offset()))
-        offset = abs(offset)
         d = cls.get_date_by_offset(offset)
         date1 = datetime.combine(d, time(0, 0), tzinfo=tzinfo)
         date2 = datetime.combine(d, time(23, 59, 59), tzinfo=tzinfo)
@@ -249,7 +248,7 @@ class Message:
     
     @staticmethod
     def get_date_by_offset(offset: int) -> date:
-        return date.today() - timedelta(days = offset)
+        return date.today() + timedelta(days = offset)
 
 
 def get_connection():

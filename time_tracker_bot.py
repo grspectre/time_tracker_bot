@@ -56,7 +56,7 @@ async def log_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     try:
         offset = int(offset)
     except ValueError:
-        error = 'Offset must be negative integer'
+        error = 'Offset must be an negative integer'
 
     if error is None:
         if offset > 0:

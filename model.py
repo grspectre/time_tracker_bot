@@ -66,6 +66,10 @@ class User:
             return self.data[key]
         return default_value
 
+    def del_from_data(self, key: str) -> None:
+        if key in self.data:
+            del self.data[key]
+
     def save(self) -> None:
         sql = "UPDATE {} SET data = %s WHERE id = %s".format(self.table_name)
         try:
@@ -83,8 +87,19 @@ class User:
         self.data['utc_offset'] = offset
         self.save()
 
+    def set_sleep_tag(self, sleep_tag: str) -> None:
+        self.data['sleep_tag'] = sleep_tag
+        self.save()
+
+    def del_sleep_tag(self) -> None:
+        self.del_from_data('sleep_tag')
+        self.save()
+
     def get_utc_offset(self) -> int:
         return self.from_data('utc_offset', 0)
+
+    def get_sleep_tag(self) -> Optional[str]:
+        return self.from_data('sleep_tag')
 
 
 @dataclass

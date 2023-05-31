@@ -22,7 +22,7 @@ async def set_utc_offset_command(update: Update, context: ContextTypes.DEFAULT_T
         try:
             offset = int(offset)
         except ValueError:
-            error = 'Offset must be integer'
+            error = 'Offset must be an integer'
 
     if error is None:
         if offset < -24 or offset > 24:
@@ -36,6 +36,41 @@ async def set_utc_offset_command(update: Update, context: ContextTypes.DEFAULT_T
     db_user = get_user(from_user)
     db_user.set_utc_offset(offset)
     await update.message.reply_text('UTC offset changed to {:d}'.format(offset))
+
+
+async def set_sleep_tag_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.message.text.split()
+    help_text = 'Use /set_sleep_tag #SLEEP_TAG, for example /set_sleep_tag #sleep.'
+
+    error = None
+    try:
+        sleep_tag = text[1].strip()
+    except IndexError:
+        error = 'Sleep tag not defined.'
+
+    if error is None:
+        try:
+            if sleep_tag[0] != '#' or len(sleep_tag) == 1:
+                error = 'Value must starts with # and length must be greater than 1.'
+        except ValueError:
+            error = 'Sleep tag not defined.'
+
+    if error is not None:
+        await update.message.reply_text('{} {}'.format(error, help_text))
+        return
+
+    from_user = update.effective_user
+    db_user = get_user(from_user)
+    db_user.set_sleep_tag(sleep_tag)
+    await update.message.reply_text('Sleep tag set to {:s}'.format(sleep_tag))
+
+
+async def delete_sleep_tag_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    from_user = update.effective_user
+    db_user = get_user(from_user)
+    sleep_tag = db_user.get_sleep_tag()
+    db_user.del_sleep_tag()
+    await update.message.reply_text('Sleep tag {:s} deleted'.format(sleep_tag))
 
 
 async def log_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -176,6 +211,8 @@ def bot_init(token: str) -> None:
 
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("set_utc_offset", set_utc_offset_command))
+    app.add_handler(CommandHandler("set_sleep_tag", set_sleep_tag_command))
+    app.add_handler(CommandHandler("del_sleep_tag", delete_sleep_tag_command))
     app.add_handler(CommandHandler("log", log_command))
     app.add_handler(CommandHandler("stat", stat_command))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, track_save))

@@ -239,7 +239,7 @@ class Message:
 
     @classmethod
     def get_sql_with_sleep_tag(cls, min_date: date, max_date: date, sleep_tag: str, user_id: int) -> tuple:
-        template = """SELECT * FROM {table} WHERE tt_user_id = %s
+        template = """SELECT event_time, description FROM {table} WHERE tt_user_id = %s
 AND event_time BETWEEN
 (
   SELECT min(event_time)

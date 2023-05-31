@@ -238,19 +238,45 @@ class Message:
         return '\n'.join(rows)
 
     @classmethod
+    def get_sql_with_sleep_tag(cls, min_date: date, max_date: date, sleep_tag: str, user_id: int) -> tuple:
+        template = """SELECT * FROM {table} WHERE tt_user_id = %s
+AND event_time BETWEEN
+(
+  SELECT min(event_time)
+  FROM {table}
+  WHERE date(event_time) = %s AND data->'tracker_tags' ? %s AND tt_user_id = %s
+) AND (
+  SELECT CASE WHEN min(event_time) IS NULL THEN now() ELSE min(event_time) END
+  FROM {table}
+  WHERE date(event_time) > %s AND data->'tracker_tags' ? %s AND tt_user_id = %s
+) ORDER BY event_time""".format(table=cls.table_name)
+        return (template, (user_id, min_date, sleep_tag, user_id, max_date, sleep_tag, user_id,))
+
+    @classmethod
+    def get_default_sql(cls, min_date: date, max_date: date, tzinfo: timezone, user_id: int) -> tuple:
+        date1 = datetime.combine(min_date, time(0, 0), tzinfo=tzinfo)
+        date2 = datetime.combine(max_date, time(23, 59, 59), tzinfo=tzinfo)
+        template = """SELECT event_time, description 
+        FROM {table}
+        WHERE tt_user_id = %s AND event_time BETWEEN %s AND %s
+        ORDER BY event_time""".format(table=cls.table_name)
+        return (template, (user_id, date1, date2))
+
+    @classmethod
     def get_log(cls, user: User, offset: int) -> List:
         tzinfo = timezone(timedelta(hours=user.get_utc_offset()))
         d = cls.get_date_by_offset(offset)
-        date1 = datetime.combine(d, time(0, 0), tzinfo=tzinfo)
-        date2 = datetime.combine(d, time(23, 59, 59), tzinfo=tzinfo)
-        sql = """SELECT event_time, description 
-        FROM {}
-        WHERE tt_user_id = %s AND event_time BETWEEN %s AND %s
-        ORDER BY event_time""".format(cls.table_name)
+
+        sleep_tag = user.get_sleep_tag()
+        if sleep_tag is None:
+            sql, params = cls.get_default_sql(d,  d, tzinfo, user.id)
+        else:
+            sql, params = cls.get_sql_with_sleep_tag(d,  d, sleep_tag, user.id)
+
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute(sql, (user.id, date1, date2))
+            cursor.execute(sql, params)
             result = cursor.fetchall()
         except (Exception, psycopg2.Error) as error:
             logger.error('PQ error: {}'.format(error))

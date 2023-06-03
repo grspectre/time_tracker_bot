@@ -26,3 +26,7 @@ def get_tags(text: str) -> List:
         else:
             text_list.append(word)
     return [' '.join(text_list), tags_list]
+
+
+def chunk(data: List, size: int) -> List:
+    return [data[i:i+size] for i in range(0, len(data), size)]
